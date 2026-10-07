@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lamas"
+version = "0.1.0"
+description = "Latency-aware orchestration for multi-agent LLM systems"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Xi Shi" }, { name = "Mengxin Zheng" }, { name = "Qian Lou" }]
+keywords = ["llm", "multi-agent", "orchestration", "latency", "agents"]
+dependencies = ["httpx>=0.25", "pyyaml>=6", "numpy>=1.24"]
+
+[project.optional-dependencies]
+policy = ["torch>=2.1", "sentence-transformers>=2.6"]
+serve = ["fastapi>=0.110", "uvicorn>=0.27"]
+litellm = ["litellm>=1.60"]
+all = ["lamas[policy,serve]"]
+dev = ["lamas[all]", "pytest>=8", "pytest-asyncio>=0.23", "openai>=1.40"]
+
+[project.scripts]
+lamas = "lamas.cli:main"
+
+[project.urls]
+Paper = "https://arxiv.org/abs/2601.10560"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lamas = ["serve/*.html", "serve/*.json", "serve/recordings/*.json"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

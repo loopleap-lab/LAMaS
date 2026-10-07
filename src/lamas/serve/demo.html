@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LAMaS demo</title>
+<style>
+  :root {
+    --ink: #0f172a; --body: #334155; --muted: #64748b; --faint: #94a3b8; --line: #cbd5e1; --hair: #e2e8f0;
+    --card: #f1f5f9; --page: #f8fafc; --white: #ffffff; --navy: #0b1f33;
+    --teal: #0d9488; --teal-dark: #0f766e; --teal-tint: #e6f6f4; --teal-line: #5cc3b9; --mint: #5eead4;
+    --red: #dc2626; --red-tint: #fdecec; --amber: #b45309; --amber-tint: #fef3c7;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--body);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 14px; }
+  header { background: var(--navy); color: #fff; padding: 14px 28px; display: flex; align-items: center; gap: 14px; }
+  header svg { flex: none; }
+  header .name { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
+  header .tag { color: #c7d7e8; font-size: 13.5px; }
+  header .spacer { flex: 1; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #275a85; color: #c7d7e8; border-radius: 999px;
+    padding: 3px 11px; font-size: 12px; white-space: nowrap; }
+  .chip b { color: #fff; font-weight: 600; }
+  .chip.live { border-color: var(--mint); color: var(--mint); }
+  main { max-width: 1400px; margin: 0 auto; padding: 18px 28px 26px; }
+  .ask { display: flex; gap: 10px; align-items: stretch; }
+  .ask textarea { flex: 1; resize: none; height: 96px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink); background: var(--white); line-height: 1.4; white-space: pre; }
+  .ask textarea:focus { outline: 2px solid var(--teal-line); border-color: var(--teal); }
+  .ask .side { display: flex; flex-direction: column; gap: 6px; width: 330px; }
+  select, button { font: inherit; border-radius: 9px; border: 1px solid var(--line); background: var(--white); color: var(--ink); padding: 0 10px; height: 26px; }
+  button.run { height: 26px; background: var(--teal); border-color: var(--teal); color: #fff; font-weight: 700; cursor: pointer; }
+  button.run:disabled { background: var(--faint); border-color: var(--faint); cursor: default; }
+  .opts { display: flex; gap: 6px; }
+  .opts select { flex: 1; min-width: 0; }
+  .opts button { flex: none; width: 120px; }
+  .cols { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-top: 14px; }
+  .panel { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; min-height: 420px;
+    display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(15, 23, 42, .04); }
+  .panel.ours { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+  .phead { display: flex; align-items: flex-start; gap: 12px; }
+  .phead h2 { margin: 0; font-size: 17px; color: var(--ink); }
+  .panel.ours .phead h2 { color: var(--teal-dark); }
+  .phead .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .phead .grow { flex: 1; }
+  .clock { font-size: 34px; font-weight: 750; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
+  .clock small { font-size: 15px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+  .panel.ours .clock { color: var(--teal-dark); }
+  .stats { display: flex; gap: 14px; justify-content: flex-end; color: var(--muted); font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .stats b { color: var(--ink); font-weight: 650; }
+  .stats span { white-space: nowrap; }
+  .state { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; border-radius: 999px;
+    padding: 2px 9px; margin-left: 8px; vertical-align: 2px; background: var(--card); color: var(--muted); }
+  .state.running { background: var(--amber-tint); color: var(--amber); }
+  .state.done { background: var(--teal-tint); color: var(--teal-dark); }
+  .state.error { background: var(--red-tint); color: var(--red); }
+  .gantt { margin-top: 10px; flex: 1; padding-right: 34px; }
+  .plot { position: relative; padding-top: 18px; }
+  .row { display: flex; align-items: center; height: 24px; position: relative; z-index: 1; }
+  .row .label { width: 150px; flex: none; font-family: var(--mono); font-size: 11.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .label em { font-style: normal; color: var(--faint); }
+  .row.pruned .label { color: var(--faint); text-decoration: line-through; }
+  .track { position: relative; flex: 1; height: 16px; }
+  .bar { position: absolute; top: 0; height: 16px; border-radius: 4px; background: var(--teal-line); min-width: 3px; transition: background-color .25s; }
+  .bar.running { background: linear-gradient(90deg, var(--teal-line), var(--mint)); }
+  .bar.critical { background: var(--red); }
+  .bar.error, .bar.cancelled { background: var(--faint); }
+  .bar .dur { position: absolute; left: 100%; margin-left: 4px; top: 1px; line-height: 14px; font-size: 10.5px; color: var(--muted); white-space: nowrap;
+    font-variant-numeric: tabular-nums; background: rgba(255, 255, 255, .86); padding: 0 3px; border-radius: 3px; }
+  .bar.critical .dur { color: var(--red); font-weight: 650; }
+  .ghost { position: absolute; top: 2px; height: 12px; border: 1px dashed var(--faint); border-radius: 4px; font-size: 9.5px; color: var(--faint);
+    line-height: 10px; padding: 0 5px; white-space: nowrap; }
+  .grid { position: absolute; left: 150px; right: 0; top: 0; bottom: 0; pointer-events: none; }
+  .grid i { position: absolute; top: 18px; bottom: 0; width: 1px; background: var(--hair); }
+  .grid .gate { position: absolute; top: 2px; bottom: 0; width: 0; border-left: 2px dashed var(--teal-dark); }
+  .grid .gate span { position: absolute; top: -3px; left: 6px; font-size: 11px; font-weight: 700; color: var(--teal-dark); white-space: nowrap; }
+  .axis { position: relative; height: 18px; margin-left: 150px; border-top: 1px solid var(--line); }
+  .axis span { position: absolute; top: 3px; transform: translateX(-50%); font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .picks { margin-top: 8px; border-top: 1px solid var(--hair); padding-top: 9px; font-family: var(--mono); font-size: 11px; color: var(--muted); min-height: 26px; }
+  .answer { display: flex; gap: 10px; align-items: baseline; }
+  .answer .k { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); flex: none; }
+  .answer .ok { font-size: 12px; font-weight: 700; color: var(--teal-dark); flex: none; }
+  .answer .ok.bad { color: var(--red); }
+  pre.code { flex: 1; margin: 10px 0 0; padding: 12px 14px; background: var(--page); border: 1px solid var(--hair); border-radius: 9px; overflow: auto;
+    font-family: var(--mono); font-size: 12px; line-height: 1.45; color: var(--ink); max-height: 380px; white-space: pre; }
+  .summary { margin-top: 14px; border-radius: 12px; padding: 13px 18px; background: var(--teal-tint); border: 1px solid var(--teal-line);
+    display: none; align-items: center; gap: 26px; }
+  .summary.show { display: flex; }
+  .summary .big { font-size: 30px; font-weight: 800; color: var(--teal-dark); line-height: 1; font-variant-numeric: tabular-nums; }
+  .summary .cap { font-size: 12px; color: var(--body); margin-top: 3px; }
+  .summary .note { margin-left: auto; color: var(--body); font-size: 13px; max-width: 46%; text-align: right; }
+  .legend { display: flex; gap: 18px; margin-top: 12px; color: var(--muted); font-size: 12px; align-items: center; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 22px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+  .legend .foot { margin-left: auto; }
+  .err { color: var(--red); font-size: 12.5px; margin-top: 8px; white-space: pre-wrap; }
+  @media (max-width: 980px) { .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <svg width="30" height="30" viewBox="0 0 96 96" aria-hidden="true">
+    <g fill="none" stroke-linecap="round" stroke-width="6">
+      <path d="M20 48 L48 22" stroke="#5eead4"/><path d="M48 22 L76 48" stroke="#5eead4"/>
+      <path d="M20 48 L48 74" stroke="#5eead4"/><path d="M48 74 L76 48" stroke="#64748b" stroke-dasharray="3 11"/>
+    </g>
+    <circle cx="20" cy="48" r="11" fill="#5eead4"/><circle cx="48" cy="22" r="11" fill="#5eead4"/>
+    <circle cx="76" cy="48" r="11" fill="#5eead4"/><circle cx="48" cy="74" r="9" fill="none" stroke="#64748b" stroke-width="5"/>
+  </svg>
+  <span class="name">LAMaS</span>
+  <span class="tag">one problem, one workflow, live</span>
+  <span class="spacer"></span>
+  <span class="chip" id="chip-policy">policy <b>…</b></span>
+  <span class="chip" id="chip-backend">backend <b>…</b></span>
+  <span class="chip live" id="chip-source">…</span>
+</header>
+<main>
+  <div class="ask">
+    <textarea id="q" spellcheck="false" placeholder="Paste a function signature with its docstring, or pick a sample on the right."></textarea>
+    <div class="side">
+      <select id="samples" aria-label="Sample problems"></select>
+      <div class="opts">
+        <select id="source" aria-label="Run mode"></select>
+        <button class="run" id="run">Run ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <section class="panel ours" id="p-run">
+      <div class="phead">
+        <div>
+          <h2><span class="title">Workflow</span><span class="state" id="state">idle</span></h2>
+          <div class="sub">picked by the controller · run in parallel · pruned by the stop gate</div>
+        </div>
+        <div class="grow"></div>
+        <div>
+          <div class="clock"><span id="clock">0.0</span><small>s</small></div>
+          <div class="stats"><span><b id="calls">0</b> LLM calls</span><span><b id="tokens">0</b> tokens</span><span>$<b id="cost">0.0000</b></span></div>
+        </div>
+      </div>
+      <div class="gantt"><div class="plot"><div class="grid" id="grid"></div><div id="rows"></div></div><div class="axis" id="axis"></div></div>
+      <div class="picks" id="layers"></div>
+      <div class="err" id="err"></div>
+    </section>
+    <section class="panel" id="p-answer">
+      <div class="answer"><span class="k">Answer</span><span class="ok" id="ok"></span></div>
+      <pre class="code" id="answer">—</pre>
+    </section>
+  </div>
+
+  <div class="summary" id="summary">
+    <div><div class="big" id="s-speed">–</div><div class="cap">faster than one operator at a time</div></div>
+    <div><div class="big" id="s-pruned">–</div><div class="cap">operators pruned by the stop gate</div></div>
+    <div><div class="big" id="s-path">–</div><div class="cap">operators on the critical path</div></div>
+    <div class="note" id="s-note"></div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--red)"></i>critical path</span>
+    <span><i style="background:var(--teal-line)"></i>other operators</span>
+    <span><i style="border:1px dashed var(--faint);background:none"></i>pruned by the stop gate</span>
+    <span><i style="width:0;border-left:2px dashed var(--teal-dark);height:12px;border-radius:0"></i>the stop gate fires</span>
+    <span class="foot">Each bar is one operator. Operators that do not wait for each other run at the same time.</span>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (x, d = 1) => Number(x).toFixed(d);
+let st = null;                // the state of the current run
+let config = null, raf = null, es = null;
+
+function reset() {
+  st = { nodes: {}, order: [], t0: null, done: false, latency: 0, calls: 0, tokens: 0, gate: null };
+  $("rows").innerHTML = ""; $("err").textContent = ""; $("answer").textContent = "—"; $("layers").textContent = "";
+  $("clock").textContent = "0.0"; $("ok").textContent = ""; $("calls").textContent = "0"; $("tokens").textContent = "0";
+  $("cost").textContent = "0.0000"; setState("idle");
+}
+function setState(s) { $("state").textContent = s; $("state").className = "state " + s; }
+
+function addRow(id) {
+  const row = document.createElement("div"); row.className = "row";
+  const m = id.match(/^(.*)#(\d+)$/);
+  row.innerHTML = `<div class="label">${m ? m[1] + " <em>#" + m[2] + "</em>" : id}</div><div class="track"></div>`;
+  $("rows").appendChild(row);
+  st.nodes[id] = { row, track: row.querySelector(".track"), bar: null, start: null, end: null, status: "pending" };
+  st.order.push(id);
+}
+
+function onEvent(ev) {
+  if (ev.type === "meta") {       // a recorded run: say which LLM produced it, and when
+    $("chip-backend").innerHTML = `backend <b>${ev.backend}</b>`;
+    $("chip-source").textContent = "recorded " + ev.recorded_at;
+    return;
+  }
+  if (st.t0 === null) st.t0 = performance.now() - (ev.t || 0) * 1000;
+  if (ev.type === "plan") {
+    for (const n of ev.nodes) addRow(n.id);
+    $("layers").textContent = "controller picks: " + ev.layers.map(l => l.join(" · ")).join("  →  ");
+    setState("running");
+  } else if (ev.type === "start") {
+    if (!st.nodes[ev.id]) addRow(ev.id);
+    const n = st.nodes[ev.id]; n.start = ev.t; n.status = "running";
+    n.bar = document.createElement("div"); n.bar.className = "bar running";
+    n.bar.innerHTML = '<span class="dur"></span>'; n.track.appendChild(n.bar);
+  } else if (ev.type === "end") {
+    const n = st.nodes[ev.id]; if (!n) return;
+    n.end = ev.t; n.status = ev.status; n.bar.className = "bar " + (ev.status === "done" ? "" : ev.status);
+    n.bar.querySelector(".dur").textContent = fmt(n.end - n.start) + "s";
+    st.calls += ev.calls || 0; st.tokens += ev.tokens || 0;
+    $("calls").textContent = st.calls; $("tokens").textContent = st.tokens.toLocaleString();
+  } else if (ev.type === "prune") {
+    const n = st.nodes[ev.id]; if (!n) return;
+    n.status = "pruned"; n.row.classList.add("pruned"); n.pruneAt = ev.t;
+    const g = document.createElement("div"); g.className = "ghost"; g.textContent = "pruned"; n.track.appendChild(g); n.ghost = g;
+  } else if (ev.type === "stop") {
+    st.gate = { t: ev.t, reason: ev.reason };
+  } else if (ev.type === "drop") {
+    const n = st.nodes[ev.id]; if (n) { n.row.remove(); delete st.nodes[ev.id]; st.order = st.order.filter(x => x !== ev.id); }
+  } else if (ev.type === "final") {
+    st.done = true; st.latency = ev.latency;
+    $("calls").textContent = ev.usage.llm_calls; $("tokens").textContent = ev.usage.completion_tokens.toLocaleString();
+    $("cost").textContent = fmt(ev.cost, 4); $("clock").textContent = fmt(ev.latency);
+    for (const id of ev.critical_path || []) { const n = st.nodes[id]; if (n && n.bar) n.bar.classList.add("critical"); }
+    $("answer").textContent = (ev.answer || "").trim() || "—";
+    if (ev.correct !== undefined) { $("ok").textContent = ev.correct ? "✓ passes the hidden tests" : "✗ fails the hidden tests"; $("ok").className = "ok" + (ev.correct ? "" : " bad"); }
+    setState("done"); finish(ev);
+  } else if (ev.type === "error") {
+    st.done = true; $("err").textContent = ev.message; setState("error"); $("run").disabled = false;
+  }
+}
+
+function niceScale(x) { for (const s of [5, 10, 15, 20, 30, 45, 60, 75, 90, 120, 150, 180, 240, 360, 600]) if (x <= s * 0.94) return s; return Math.ceil(x / 300) * 300; }
+function tickStep(s) { return s <= 10 ? 1 : s <= 20 ? 2 : s <= 45 ? 5 : s <= 120 ? 10 : s <= 240 ? 20 : 60; }
+
+function draw() {
+  if (st && st.t0 !== null) {
+    const now = st.done ? st.latency : (performance.now() - st.t0) / 1000;
+    const scale = niceScale(Math.max(now, 4));
+    if (!st.done) $("clock").textContent = fmt(now);
+    for (const id of st.order) {
+      const n = st.nodes[id]; if (!n) continue;
+      if (n.bar) {
+        const end = n.end !== null ? n.end : now;
+        n.bar.style.left = (n.start / scale * 100) + "%";
+        n.bar.style.width = Math.max(0.2, (end - n.start) / scale * 100) + "%";
+        if (n.end === null) n.bar.querySelector(".dur").textContent = fmt(end - n.start) + "s";
+      }
+      if (n.ghost) n.ghost.style.left = Math.min(92, (n.pruneAt / scale * 100)) + "%";
+    }
+    const step = tickStep(scale); let axis = "", grid = "";
+    for (let t = 0; t <= scale + 1e-9; t += step) {
+      const x = t / scale * 100;
+      axis += `<span style="left:${x}%">${t}s</span>`; grid += `<i style="left:${x}%"></i>`;
+    }
+    if (st.gate) grid += `<div class="gate" style="left:${st.gate.t / scale * 100}%"><span>${st.gate.reason === "deadline" ? "deadline" : "stop gate fires"} · ${fmt(st.gate.t)}s</span></div>`;
+    $("axis").innerHTML = axis; $("grid").innerHTML = grid;
+  }
+  raf = st && st.t0 !== null && !st.done ? requestAnimationFrame(draw) : null;
+}
+
+function finish(ev) {
+  $("run").disabled = false; draw();
+  // the same operators one after another would take the sum of their run times
+  let serial = 0;
+  for (const id of st.order) { const n = st.nodes[id]; if (n && n.start !== null && n.end !== null) serial += n.end - n.start; }
+  if (!(st.latency > 0 && serial > 0)) return;
+  $("s-speed").textContent = fmt(Math.max(serial / st.latency, 1), 1) + "×";
+  $("s-pruned").textContent = (ev.pruned || []).length;
+  $("s-path").textContent = (ev.critical_path || []).length;
+  $("s-note").innerHTML = `One operator at a time: ${fmt(serial)} s. As a workflow: <b>${fmt(st.latency)} s</b>.`;
+  $("summary").classList.add("show");
+}
+
+function currentSample() { const q = $("q").value; return (config.samples || []).find(s => s.prompt.trim() === q.trim()) || null; }
+
+function run() {
+  const q = $("q").value; if (!q.trim()) return;
+  $("run").disabled = true; $("summary").classList.remove("show"); showSource();
+  const [source, speed] = $("source").value.split("@");
+  const sample = currentSample();
+  if (es) es.close();
+  reset();
+  const params = new URLSearchParams({ source });
+  if (sample) params.set("sample", sample.id); else params.set("q", q);
+  if (speed) params.set("speed", speed);
+  es = new EventSource("/demo/stream?" + params.toString());
+  es.onmessage = (m) => { const ev = JSON.parse(m.data); onEvent(ev); if (ev.type === "final" || ev.type === "error") es.close(); if (!raf) raf = requestAnimationFrame(draw); };
+  es.onerror = () => { es.close(); if (!st.done) onEvent({ type: "error", message: "The stream closed before the run finished." }); };
+}
+
+function refreshSource() {
+  const sample = currentSample();
+  let html = `<option value="live">${config.source === "simulated" ? "simulated" : "live"}</option>`;
+  if (sample && sample.recorded) html += '<option value="recorded@1">recorded · 1×</option><option value="recorded@4">recorded · 4×</option>';
+  const keep = $("source").value; $("source").innerHTML = html;
+  if ([...$("source").options].some(o => o.value === keep)) $("source").value = keep;
+}
+
+function showSource() {
+  $("chip-policy").innerHTML = `policy <b>${config.policy}</b>`;
+  $("chip-backend").innerHTML = `backend <b>${config.backend}</b>`;
+  $("chip-source").textContent = config.source === "simulated" ? "simulated latency" : "live";
+}
+
+async function boot() {
+  config = await (await fetch("/demo/config")).json();
+  showSource(); reset();
+  $("samples").innerHTML = '<option value="">Sample problems…</option>' +
+    config.samples.map((s, i) => `<option value="${i}">${s.label}  (${s.id})</option>`).join("");
+  $("samples").onchange = (e) => { const s = config.samples[e.target.value]; if (s) { $("q").value = s.prompt; refreshSource(); } };
+  $("q").oninput = refreshSource; $("run").onclick = run;
+  const url = new URLSearchParams(location.search);
+  const pick = Math.min(parseInt(url.get("sample") || "0", 10) || 0, Math.max(config.samples.length - 1, 0));
+  if (config.samples.length) { $("q").value = config.samples[pick].prompt; $("samples").value = String(pick); }
+  refreshSource();
+  if (url.get("source") && [...$("source").options].some(o => o.value === url.get("source"))) $("source").value = url.get("source");
+  draw();
+  if (url.get("autorun")) run();
+}
+boot();
+</script>
+</body>
+</html>

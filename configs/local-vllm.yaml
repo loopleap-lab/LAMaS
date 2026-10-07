@@ -1,0 +1,7 @@
+# The released policy on a locally served open-weight model (vLLM, SGLang, or Ollama at :11434/v1).
+#   lamas serve configs/local-vllm.yaml --port 8080
+backend:                                   # the serving engine
+  base_url: http://localhost:8000/v1       # any OpenAI-compatible endpoint
+  model:    qwen3.5-9b
+policy:     lamas/humaneval                # the trained controller + stop gate
+budget:     {latency_s: 20}                # optional latency deadline

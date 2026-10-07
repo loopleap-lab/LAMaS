@@ -1,0 +1,7 @@
+# HumanEval with the released policy on gpt-4o-mini.
+#   lamas eval configs/humaneval-gpt4omini.yaml --out runs/humaneval
+# The API key is read from $LAMAS_API_KEY or $OPENAI_API_KEY.
+backend:                                   # the serving engine
+  base_url: https://api.openai.com/v1      # any OpenAI-compatible endpoint
+  model:    gpt-4o-mini
+policy:     lamas/humaneval                # the trained controller + stop gate
