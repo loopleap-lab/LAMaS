@@ -14,6 +14,7 @@
   <a href="https://arxiv.org/abs/2601.10560"><img src="https://img.shields.io/badge/NeurIPS-2026-6d28d9" alt="NeurIPS 2026"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%2B-3776ab" alt="Python 3.10+"></a>
   <a href="#drop-in-endpoint"><img src="https://img.shields.io/badge/API-OpenAI--compatible-0d9488" alt="OpenAI-compatible API"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache-2.0"></a>
 </p>
 
 <p align="center">
@@ -237,3 +238,7 @@ configs, traces or reports; `tests/test_no_secrets.py` fails if a key-shaped str
 ```
 
 The controller architecture and the operator library build on MaAS (Zhang et al., ICML 2025).
+
+## License
+
+LAMaS is released under the [Apache License 2.0](LICENSE). Material from other projects is listed in [NOTICE](NOTICE).
