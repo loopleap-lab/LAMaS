@@ -7,7 +7,8 @@ controller and stop gate only reproduce their numbers on the workflow they were 
 * a reply is reduced to code the same way (:func:`sanitize`);
 * one task-specific operator, ``Test``, runs the public test cases and repairs the code;
 * after the workflow, the answer is chosen by the public tests, and rewritten if nothing passes;
-* two solutions agree only when their text is identical, which is what the stop gate was trained on.
+* two solutions agree when they get the same pass/fail outcomes on the public test cases, the same
+  execution feedback the ``Test`` operator uses.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import os
 import re
 from typing import Dict, List, Optional, Set
 
+from .. import answers
 from ..operators.base import Context, Operator
 from ..registry import register_operator, register_task
 from ..sandbox import run_python
@@ -354,7 +356,22 @@ class HumanEval(Task):
         return code
 
     def answer_key(self, solution: str, item: Optional[dict] = None) -> Optional[str]:
-        return None             # two programs agree only when their text is identical
+        return None             # comparing programs means running them: see akey
+
+    async def akey(self, solution: str, item: Optional[dict] = None) -> Optional[str]:
+        """Two programs agree when they get the same pass/fail outcomes on the public tests.
+
+        A problem without public tests has no execution feedback; its programs agree only when
+        their text is identical.
+        """
+        entry = (item or {}).get("entry_point")
+        if not entry or not public_tests(entry):
+            return None
+        result = await run_public_tests(solution, entry)
+        if result["error"]:
+            return "tests:error"
+        failed = sorted(case["test_fail_case"]["test_case"] for case in result["fail_cases"])
+        return "tests:" + (answers.text_hash("\n".join(failed)) if failed else "pass")
 
     def parse_choice(self, reply: str, n: int) -> Optional[int]:
         match = re.search(r"<solution_letter>(.*?)</solution_letter>", reply or "", re.DOTALL)

@@ -50,15 +50,15 @@ The `humaneval` task of the package runs the workflow the controller and the sto
 - **Operators**: `Generate`, `GenerateCoT`, `MultiGenerateCoT`, `ScEnsemble`, `Test`, `SelfRefine`, `EarlyStop`.
 - **Scheduler**: operators that need only the problem start at once; the others wait for their inputs.
 - **Final step**: the answer is chosen with the public test cases, repaired up to three times, and written again if nothing passes.
-- **Requests**: temperature 0, at most 4096 tokens, the system message "You are a helpful assistant.". These are the defaults of the package.
-- **Agreement between solutions**: two programs agree only when their text is identical. The gate reads this share as one of its two state features.
+- **Requests**: temperature 1, at most 4096 tokens, the system message "You are a helpful assistant.". These are the defaults of the package.
+- **Agreement between solutions**: two programs agree when they get the same pass/fail outcomes on the public test cases. The gate reads this share as one of its two state features.
 
 `Test` executes generated code in a child process with a time limit. For untrusted workloads, run LAMaS in a container.
 
 ## Where it comes from
 
 - **Training data**: 33 HumanEval problems (`data/humaneval_train.jsonl`). The 131 test problems were not used.
-- **Controller**: trained with the objective of the paper: latency weight 0.005, cost weight 3.0, an accuracy floor enforced with a dual variable (learning rate 0.1), and critical-path credit. LLM during training: gpt-4o-mini.
+- **Controller**: trained with the objective of the paper: latency weight 0.005, cost weight 3.0, an accuracy floor enforced with a dual variable (learning rate 0.01), and critical-path credit. LLM during training: gpt-4o-mini.
 - **Stop gate**: trained afterwards on the traces of this controller on the training problems.
 
 ## Reproduce

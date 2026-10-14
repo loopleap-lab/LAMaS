@@ -3,5 +3,5 @@
 # The API key is read from $LAMAS_API_KEY or $OPENAI_API_KEY.
 backend:                                   # the serving engine
   base_url: https://api.openai.com/v1      # any OpenAI-compatible endpoint
-  model:    gpt-4o-mini
+  model:    gpt-4o-mini-2024-07-18
 policy:     lamas/humaneval                # the trained controller + stop gate

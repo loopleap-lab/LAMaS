@@ -30,7 +30,7 @@ Progress = Optional[Callable[[Dict[str, Any]], None]]
 async def atrain(task: Any, backend: Any = None, *, operators: Optional[List[str]] = None,
                  out: Optional[str] = None, name: Optional[str] = None, init: Any = None,
                  layers: int = 4, threshold: float = 0.3, latency_weight: float = 0.005, cost_weight: float = 3.0,
-                 accuracy_floor: Optional[float] = None, dual_lr: float = 0.1,
+                 accuracy_floor: Optional[float] = None, dual_lr: float = 0.01,
                  repeats: int = 4, batch_size: int = 4, lr: float = 0.01, limit: Optional[int] = None,
                  gate_epochs: int = 100, gate_lr: float = 0.01,
                  seed: int = 0, on_progress: Progress = None) -> Policy:

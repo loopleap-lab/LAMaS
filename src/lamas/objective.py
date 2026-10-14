@@ -24,7 +24,7 @@ class Objective:
     cost_weight: float = 3.0            # lambda_c, per USD
     accuracy_floor: float = 1.0         # S0
     lambda_acc: float = 1.0             # lambda_S, the dual variable
-    dual_lr: float = 0.1                # eta
+    dual_lr: float = 0.01               # eta
 
     def reward(self, score: float, latency: float, cost: float) -> float:
         """The global reward of one run (Eq. 5)."""

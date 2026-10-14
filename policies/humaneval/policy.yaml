@@ -29,5 +29,5 @@ source:
 training:
   latency_weight: 0.005
   cost_weight: 3.0
-  dual_lr: 0.1
+  dual_lr: 0.01
   train_items: 33

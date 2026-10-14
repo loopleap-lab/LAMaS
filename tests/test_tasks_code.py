@@ -25,8 +25,13 @@ async def test_public_tests_run_and_report():
     assert good["passed"] and not bad["passed"] and bad["fail_cases"] and bad["error"] is None
     broken = await run_public_tests("def has_close_elements(numbers, threshold):\n    return undefined_name\n", "has_close_elements")
     assert not broken["passed"] and "undefined_name" in broken["error"]
-    # two programs agree only when their text is identical: that is what the stop gate was trained on
-    assert await HumanEval().akey(GOOD, {"entry_point": "has_close_elements"}) is None
+    # two programs agree when they get the same pass/fail outcomes on the public tests
+    item, task = {"entry_point": "has_close_elements"}, HumanEval()
+    assert await task.akey(GOOD, item) == "tests:pass"
+    assert await task.akey(BAD, item) not in (None, "tests:pass")
+    assert await task.akey("def has_close_elements(numbers, threshold):\n    return undefined_name\n", item) == "tests:error"
+    # no public tests, no execution feedback: only identical text agrees
+    assert await task.akey("def triangle_area(a, h):\n    return a * h / 2\n", {"entry_point": "triangle_area"}) is None
 
 
 async def test_names_shared_by_two_problems_have_no_public_tests():

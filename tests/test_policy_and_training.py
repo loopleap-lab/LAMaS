@@ -83,7 +83,7 @@ async def test_training_writes_a_loadable_policy(tmp_path):
 def test_objective_matches_the_paper():
     from lamas.objective import Objective
 
-    obj = Objective(latency_weight=0.005, cost_weight=3.0, accuracy_floor=0.9, lambda_acc=1.0, dual_lr=0.1)
+    obj = Objective(latency_weight=0.005, cost_weight=3.0, accuracy_floor=0.9, lambda_acc=1.0, dual_lr=0.01)
     assert abs(obj.reward(1.0, 10.0, 0.001) - (1 / 0.9 - 0.05 - 0.003)) < 1e-9
     assert obj.update_dual(0.8) > 1.0          # below the floor: correctness gets more weight
-    assert obj.update_dual(1.0) < obj.lambda_acc + 1e-9 + 0.1
+    assert obj.update_dual(1.0) < obj.lambda_acc + 1e-9 + 0.01

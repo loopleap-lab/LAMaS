@@ -30,7 +30,7 @@ class OpenAICompatBackend(Backend):
         api_key: defaults to ``$LAMAS_API_KEY`` then ``$OPENAI_API_KEY``; local servers need none.
         price: USD per million (prompt, completion) tokens; looked up for known models.
         max_concurrency: cap on simultaneous requests from this process.
-        temperature, max_tokens, system: request settings. The defaults (temperature 0, 4096 tokens,
+        temperature, max_tokens, system: request settings. The defaults (temperature 1, 4096 tokens,
             the system message "You are a helpful assistant.") are the ones the released policy
             was trained and checked with.
     """
@@ -38,7 +38,7 @@ class OpenAICompatBackend(Backend):
     name = "openai"
 
     def __init__(self, base_url: str = "https://api.openai.com/v1", model: str = "gpt-4o-mini",
-                 api_key: Optional[str] = None, temperature: Optional[float] = 0.0,
+                 api_key: Optional[str] = None, temperature: Optional[float] = 1.0,
                  max_tokens: Optional[int] = 4096, price: Optional[tuple] = None,
                  max_concurrency: int = 64, timeout: float = 300.0, max_retries: int = 6,
                  extra_body: Optional[dict] = None, system: Optional[str] = "You are a helpful assistant."):
