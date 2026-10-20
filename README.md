@@ -49,7 +49,7 @@ This is the open-source package of the paper
 - **Any serving engine.** vLLM, SGLang, Ollama, OpenAI, OpenRouter: anything that speaks the OpenAI API.
 - **A trained policy in the box.** [`lamas/humaneval`](policies/humaneval), the controller and the stop gate behind the paper's HumanEval results, loads by default.
 - **Every answer is explained.** Each run returns a trace: which operators ran, how long each took, which ones set the latency (the critical path), what the stop gate pruned, and what it cost.
-- **Built to extend.** A new operator is one file. Controllers, stop policies, serving engines and tasks register the same way.
+- **Built to extend.** Your data, prompts and workflow fit in one config, and a tool is one function. Nothing needs training ([guide](docs/extending.md)).
 
 ## Quickstart
 
@@ -166,6 +166,25 @@ class Debate(Operator):
 Controllers (`@register_controller`), stop policies, serving engines and tasks register the same way,
 and third-party packages can register through entry points (`lamas.operators`, `lamas.controllers`, ...).
 
+**A new domain is one config.** Your data, your prompts, your tools and a hand-written workflow, with
+no training: the scheduler, the stop policy, the trace and the endpoint work as they do for HumanEval.
+
+```yaml
+plugins: [tools.py]                          # your operators: retrieval, a calculator, an API
+task:
+  name:   custom
+  data:   {test: orders.jsonl}               # your dataset
+  fields: {problem: question, answer: total}
+  prompts: {solve_instruction: "You work at the front desk of a shop. ..."}
+policy:
+  controller: {type: fixed, layers: [[PriceLookup, Calculator], [ScEnsemble]]}
+  stop:       {type: agreement, min_solutions: 2}
+```
+
+The guide, [docs/extending.md](docs/extending.md), covers datasets and answer formats, prompts, tools,
+plugins, workflows without training, task classes and packaging. The example above is
+[examples/extend](examples/extend).
+
 ## Where it plugs in
 
 | Level | How | Works with | Status |
@@ -206,10 +225,10 @@ src/lamas/          the runtime: api, scheduler, executor, stop, objective, cont
 policies/humaneval  the released policy and its model card
 data/               the HumanEval train and test splits and the public test cases
 configs/            example configs
-examples/           quickstart, OpenAI client, custom operator, LiteLLM provider
+examples/           quickstart, OpenAI client, custom operator, LiteLLM provider; extend/: a new domain in one config
 scripts/            make_demo.py: turn an evaluation run into the demo's recorded runs
 tests/              pytest suite; runs offline on a simulated LLM
-docs/               the figures of this page
+docs/               extending.md (the guide to new domains, data, prompts and tools) and the figures of this page
 ```
 
 ## Status and roadmap

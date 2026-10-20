@@ -2,5 +2,6 @@
 
 from ..registry import CONTROLLERS, register_controller
 from .base import Controller, Selection, make_controller
+from .fixed import FixedController
 
-__all__ = ["Controller", "Selection", "make_controller", "register_controller", "CONTROLLERS"]
+__all__ = ["Controller", "Selection", "make_controller", "register_controller", "CONTROLLERS", "FixedController"]

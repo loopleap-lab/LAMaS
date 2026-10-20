@@ -1,0 +1,24 @@
+# A new domain in one config: a shop's order questions, two tools, a hand-written workflow.
+# Nothing here needs training. See docs/extending.md.
+#   lamas run  examples/extend/orders.yaml "A customer orders 3 notebooks and 2 pens. What is the total, in dollars?"
+#   lamas eval examples/extend/orders.yaml          # every question in orders.jsonl
+# Add --backend mock to see the workflow and the trace offline (the simulated LLM does not read the question).
+
+plugins: [tools.py]                       # PriceLookup and Calculator
+
+backend:                                  # the serving engine
+  base_url: http://localhost:8000/v1
+  model:    qwen3.5-9b
+
+task:
+  name: custom
+  data:   {test: orders.jsonl}            # one question per line
+  fields: {problem: question, answer: total}
+  prompts:
+    solve_instruction: "You work at the front desk of a shop. Answer the customer's question.\nEnd with a line `Final answer: <amount>`.\n\n"
+
+policy:
+  controller:                             # both tools at the same time, then a vote
+    type:   fixed
+    layers: [[PriceLookup, Calculator], [ScEnsemble]]
+  stop: {type: agreement, min_solutions: 2}   # the two tools agree: the vote is pruned

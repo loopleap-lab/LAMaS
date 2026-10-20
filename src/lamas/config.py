@@ -29,10 +29,17 @@ def load_config(path: Optional[str]) -> Dict[str, Any]:
         cfg = yaml.safe_load(f) or {}
     if not isinstance(cfg, dict):
         raise ValueError(f"{path}: the config must be a mapping")
-    unknown = [k for k in cfg if k not in RUNNER_KEYS + ("train",)]
+    unknown = [k for k in cfg if k not in RUNNER_KEYS + ("train", "plugins")]
     if unknown:
         raise ValueError(f"{path}: unknown keys {unknown}. Known: {list(RUNNER_KEYS)}")
     cfg["_dir"] = os.path.dirname(os.path.abspath(path))
+    if cfg.get("plugins"):              # your own operators, tasks, ... from files (lamas.plugins)
+        from .plugins import load_plugins
+
+        load_plugins(cfg["plugins"], base_dir=cfg["_dir"])
+    task = cfg.get("task")
+    if isinstance(task, dict) and isinstance(task.get("data"), dict):     # data files: relative to the config
+        task["data"] = {k: (v if os.path.isabs(str(v)) else os.path.join(cfg["_dir"], str(v))) for k, v in task["data"].items()}
     return cfg
 
 
