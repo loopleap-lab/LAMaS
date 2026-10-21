@@ -1,0 +1,23 @@
+# A clinician team on MedQA cases. The tutorial: docs/tutorial.md.
+#   lamas plan examples/clinician/clinician.yaml "any case"     # the workflow, no model needed
+#   lamas run  examples/clinician/clinician.yaml "<a case>"     # one case, on the serving engine below
+#   lamas eval examples/clinician/clinician.yaml                # every case in the data file
+#   python examples/clinician/compare.py                        # with LAMaS and without
+
+plugins: [clinicians.py]                  # the agents, in this folder
+
+task:
+  name: custom
+  data:   {test: data/medqa_sample.jsonl}           # relative to this file; one case per line
+  fields: {problem: question, answer: answer}       # the keys of the case and of its answer
+  answer_format: '[Aa]nswer\W+(?:is\W+)?([A-D])\b'  # finds the option letter in a reply
+
+policy:
+  controller:                             # the workflow: three clinicians, then the attending
+    type:   fixed
+    layers: [[Internist, Pathologist, Pharmacist], [Attending]]
+  stop: {type: agreement, min_solutions: 3}         # all three agree: skip the attending
+
+backend:                                  # the serving engine: any OpenAI-compatible endpoint
+  base_url: http://localhost:8000/v1
+  model:    qwen3.5-9b

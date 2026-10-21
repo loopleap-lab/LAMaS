@@ -10,6 +10,7 @@ from . import operators as _operators  # noqa: F401  (registers the built-in ope
 from . import tasks as _tasks  # noqa: F401  (registers the built-in tasks)
 from .api import Runner, aexecute, arun, execute, get_task, plan, run
 from .backends import Backend, MockBackend, OpenAICompatBackend, make_backend
+from .compare import Comparison, acompare, compare
 from .controllers import Controller, Selection
 from .operators import Context, Operator
 from .operators.function import operator
@@ -25,7 +26,7 @@ from .types import Node, Plan, Result, Span, Trace, Usage
 __version__ = "0.1.0"
 
 __all__ = [
-    "run", "arun", "plan", "execute", "aexecute", "Runner", "train", "evaluate",
+    "run", "arun", "plan", "execute", "aexecute", "Runner", "train", "evaluate", "compare", "acompare", "Comparison",
     "Operator", "operator", "load_plugins", "Context", "Controller", "Selection", "StopPolicy", "StopState",
     "Task", "Policy", "load_policy", "get_task", "Backend", "MockBackend", "OpenAICompatBackend", "make_backend",
     "register_operator", "register_controller", "register_stop_policy", "register_backend", "register_task",

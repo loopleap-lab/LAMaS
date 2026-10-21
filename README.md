@@ -23,6 +23,7 @@
   <a href="#drop-in-endpoint"><b>Endpoint</b></a> ·
   <a href="#how-it-works"><b>How it works</b></a> ·
   <a href="#extending-it"><b>Extending</b></a> ·
+  <a href="#qa"><b>Q&amp;A</b></a> ·
   <a href="policies/humaneval"><b>Policy</b></a> ·
   <a href="https://arxiv.org/abs/2601.10560"><b>Paper</b></a>
 </p>
@@ -49,7 +50,7 @@ This is the open-source package of the paper
 - **Any serving engine.** vLLM, SGLang, Ollama, OpenAI, OpenRouter: anything that speaks the OpenAI API.
 - **A trained policy in the box.** [`lamas/humaneval`](policies/humaneval), the controller and the stop gate behind the paper's HumanEval results, loads by default.
 - **Every answer is explained.** Each run returns a trace: which operators ran, how long each took, which ones set the latency (the critical path), what the stop gate pruned, and what it cost.
-- **Built to extend.** Your data, prompts and workflow fit in one config, and a tool is one function. Nothing needs training ([guide](docs/extending.md)).
+- **Built to extend.** Your data, prompts and workflow fit in one config, and a tool is one function. Nothing needs training ([tutorial](docs/tutorial.md), [guide](docs/extending.md)).
 
 ## Quickstart
 
@@ -225,10 +226,12 @@ src/lamas/          the runtime: api, scheduler, executor, stop, objective, cont
 policies/humaneval  the released policy and its model card
 data/               the HumanEval train and test splits and the public test cases
 configs/            example configs
-examples/           quickstart, OpenAI client, custom operator, LiteLLM provider; extend/: a new domain in one config
+examples/           quickstart, OpenAI client, custom operator, LiteLLM provider;
+                    extend/: a new domain in one config; clinician/: the tutorial's clinician team on MedQA
 scripts/            make_demo.py: turn an evaluation run into the demo's recorded runs
 tests/              pytest suite; runs offline on a simulated LLM
-docs/               extending.md (the guide to new domains, data, prompts and tools) and the figures of this page
+docs/               tutorial.md (your multi-agent system on LAMaS, step by step), extending.md (the guide to
+                    new domains, data, prompts and tools) and the figures of this page
 ```
 
 ## Status and roadmap
@@ -244,6 +247,63 @@ API keys are read from the environment (`$LAMAS_API_KEY`, then `$OPENAI_API_KEY`
 configs, traces or reports; `tests/test_no_secrets.py` fails if a key-shaped string appears anywhere in the tree.
 
 `Test` executes generated code in a child process with a time limit. For untrusted workloads, run LAMaS in a container.
+
+## Q&A
+
+### Q1. I have my own multi-agent system, for example a team of clinician agents. How do I run it on LAMaS?
+
+Follow the [step-by-step tutorial](docs/tutorial.md). It builds a team of four clinician agents that
+answers MedQA (USMLE) questions, runs it on a simulated LLM with no model needed, then on a real
+model. In short:
+
+**1. Put your dataset in place**: a JSONL file next to your config, one case per line
+([examples/clinician/data](examples/clinician/data)).
+
+**2. Write your agents.** Each agent is one async function. `needs` says what it reads, so LAMaS
+knows what it waits for.
+
+```python
+@lamas.operator(needs="problem")       # reads only the case: starts at once
+async def Internist(ctx):
+    """An internist reads the whole case: the history, the findings and the tests."""
+    return await ctx.ask(ASK, role="an internist",
+                         focus="Weigh the history, the findings and the tests.")
+
+@lamas.operator(needs="solutions")     # reads the team's answers: waits for them
+async def Attending(ctx):
+    """The attending physician reads the team's answers and decides."""
+    return await ctx.ask(DECIDE)
+```
+
+**3. Describe the task and the workflow in one config**: where the data is, how answers are
+compared, the order of the agents and when to stop
+([clinician.yaml](examples/clinician/clinician.yaml)).
+
+```yaml
+policy:
+  controller: {type: fixed, layers: [[Internist, Pathologist, Pharmacist], [Attending]]}
+  stop: {type: agreement, min_solutions: 3}       # all three agree: the attending is not needed
+```
+
+**4. Compare with LAMaS and without**, in a few lines:
+
+```python
+report = lamas.compare("examples/clinician/clinician.yaml")
+print(report.table())
+```
+
+```bash
+python examples/clinician/compare.py        # the same on a simulated LLM: no model needed
+```
+
+<p align="center">
+  <img src="docs/assets/clinician-compare.gif" width="820" alt="python examples/clinician/compare.py: ten MedQA cases, each run without LAMaS and then with LAMaS. Without LAMaS every case takes 12.9 to 18.0 s and 4 LLM calls. With LAMaS the three clinicians run at the same time; on 4 of the 10 cases they agree and the attending is pruned. Mean latency 15.31 s without LAMaS and 6.91 s with it.">
+  <br><sub>A real run of step 4 on the simulated LLM, played 4× faster.</sub>
+</p>
+
+Without LAMaS, the agents run one after another and all of them run. With LAMaS, the three
+clinicians run at the same time, and the attending is pruned when they agree. On a real model the
+table also compares accuracy.
 
 ## Citation
 

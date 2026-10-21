@@ -18,8 +18,15 @@ EvalPlus (https://github.com/evalplus/evalplus)
   Apache License, Version 2.0
   The code sanitizer in src/lamas/tasks/humaneval.py follows its approach.
 
+MedQA (https://github.com/jind11/MedQA)
+  MIT License, Copyright (c) 2022 Di Jin
+  examples/clinician/data/medqa_sample.jsonl holds the first ten questions of its US (USMLE)
+  four-option test split, with the options written into each question by
+  examples/clinician/get_medqa.py (Jin et al., "What Disease Does This Patient Have? A Large-scale
+  Open Domain Question Answering Dataset from Medical Exams", Applied Sciences, 2021).
+
 --------------------------------------------------------------------------------
-The MIT License, for the HumanEval and MetaGPT material named above:
+The MIT License, for the HumanEval, MetaGPT and MedQA material named above:
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
