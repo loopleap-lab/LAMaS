@@ -3,6 +3,9 @@
     python examples/clinician/compare.py                   # a simulated LLM, no model needed
     python examples/clinician/compare.py --backend http://localhost:8000/v1 --model qwen3.5-9b
 
+--backend and --model take the place of those in clinician.yaml; an API key comes from
+$LAMAS_API_KEY or $OPENAI_API_KEY (docs/tutorial.md, step 1).
+
 Without LAMaS, the agents run one after another and all of them run, as in a plain multi-agent
 loop. With LAMaS, the three clinicians run at the same time, and the attending runs only if they
 disagree.
@@ -13,6 +16,7 @@ import os
 import random
 
 import lamas
+from lamas.config import load_config
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(HERE, "clinician.yaml")
@@ -37,6 +41,15 @@ class SimulatedLLM(lamas.MockBackend):
         return await super().complete(prompt, **kwargs)
 
 
+def llm(base_url=None, model=None):
+    """The simulated LLM, or with --backend or --model the backend of clinician.yaml with them on top."""
+    if not (base_url or model):
+        return SimulatedLLM()
+    backend = dict(load_config(CONFIG)["backend"])
+    backend.update({key: value for key, value in (("base_url", base_url), ("model", model)) if value})
+    return backend
+
+
 def show(row):
     """One line per case as it finishes."""
     without, with_ = row["without"], row["with"]
@@ -47,14 +60,13 @@ def show(row):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--backend", help="base URL of an OpenAI-compatible serving engine")
-    parser.add_argument("--model")
+    parser.add_argument("--backend", help="base URL of an OpenAI-compatible endpoint, local or hosted")
+    parser.add_argument("--model", help="the model name the endpoint expects")
     parser.add_argument("--limit", type=int, help="only the first N cases")
     args = parser.parse_args()
-    if args.backend:
-        backend, concurrency = {"base_url": args.backend, "model": args.model}, 1
-    else:   # the simulated LLM has no load, so all cases can run at once
-        backend, concurrency = SimulatedLLM(), 10
+    backend = llm(args.backend, args.model)
+    simulated = isinstance(backend, SimulatedLLM)
+    concurrency = 10 if simulated else 1        # the simulated LLM has no load, so all cases can run at once
 
     print("Each case runs without LAMaS, then with LAMaS:\n")
     report = lamas.compare(CONFIG, backend=backend, limit=args.limit, concurrency=concurrency, on_problem=show)
@@ -64,6 +76,9 @@ def main():
     for side in ("without", "with"):
         print(f"\ncase 0, {side} LAMaS")
         print(first[side]["trace"].gantt(width=40))
+    if simulated:
+        print("\nOn your own model, set up as in docs/tutorial.md, step 1:")
+        print("  python examples/clinician/compare.py --backend http://localhost:8000/v1 --model qwen3.5-9b")
 
 
 if __name__ == "__main__":

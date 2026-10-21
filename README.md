@@ -230,8 +230,8 @@ examples/           quickstart, OpenAI client, custom operator, LiteLLM provider
                     extend/: a new domain in one config; clinician/: the tutorial's clinician team on MedQA
 scripts/            make_demo.py: turn an evaluation run into the demo's recorded runs
 tests/              pytest suite; runs offline on a simulated LLM
-docs/               tutorial.md (your multi-agent system on LAMaS, step by step), extending.md (the guide to
-                    new domains, data, prompts and tools) and the figures of this page
+docs/               tutorial.md (a multi-agent system for your domain, step by step), extending.md (the
+                    guide to new domains, data, prompts and tools) and the figures of this page
 ```
 
 ## Status and roadmap
@@ -250,16 +250,31 @@ configs, traces or reports; `tests/test_no_secrets.py` fails if a key-shaped str
 
 ## Q&A
 
-### Q1. I have my own multi-agent system, for example a team of clinician agents. How do I run it on LAMaS?
+### Q1. How do I use LAMaS to build an efficient and accurate multi-agent system for another domain, for example a team of clinicians?
 
 Follow the [step-by-step tutorial](docs/tutorial.md). It builds a team of four clinician agents that
-answers MedQA (USMLE) questions, runs it on a simulated LLM with no model needed, then on a real
-model. In short:
+answers MedQA (USMLE) questions, and measures its latency and accuracy with LAMaS and without. In
+short:
 
-**1. Put your dataset in place**: a JSONL file next to your config, one case per line
+**1. Set up your LLM**: a local model, or a hosted API with your key.
+
+```bash
+# a local model on your GPU: vLLM serves Qwen3.5-9B, with its thinking turned off
+vllm serve Qwen/Qwen3.5-9B --served-model-name qwen3.5-9b --port 8000 \
+    --language-model-only --max-model-len 16384 \
+    --reasoning-parser qwen3 --default-chat-template-kwargs '{"enable_thinking": false}'
+
+# or a hosted API: the key goes in an environment variable, never in the config
+export LAMAS_API_KEY=...
+```
+
+[Step 1 of the tutorial](docs/tutorial.md#step-1-set-up-your-llm) also covers Ollama on a laptop and
+other providers. No model yet? Step 5 runs on a simulated LLM too.
+
+**2. Put your dataset in place**: a JSONL file next to your config, one case per line
 ([examples/clinician/data](examples/clinician/data)).
 
-**2. Write your agents.** Each agent is one async function. `needs` says what it reads, so LAMaS
+**3. Write your agents.** Each agent is one async function. `needs` says what it reads, so LAMaS
 knows what it waits for.
 
 ```python
@@ -275,17 +290,20 @@ async def Attending(ctx):
     return await ctx.ask(DECIDE)
 ```
 
-**3. Describe the task and the workflow in one config**: where the data is, how answers are
-compared, the order of the agents and when to stop
+**4. Describe the task, the workflow and the LLM in one config**: where the data is, how answers
+are compared, the order of the agents, when to stop, and which LLM to use
 ([clinician.yaml](examples/clinician/clinician.yaml)).
 
 ```yaml
 policy:
   controller: {type: fixed, layers: [[Internist, Pathologist, Pharmacist], [Attending]]}
   stop: {type: agreement, min_solutions: 3}       # all three agree: the attending is not needed
+backend:                                          # the LLM of step 1
+  base_url: http://localhost:8000/v1              # or https://api.openai.com/v1
+  model:    qwen3.5-9b                            # or gpt-4o-mini
 ```
 
-**4. Compare with LAMaS and without**, in a few lines:
+**5. Compare with LAMaS and without**, in a few lines:
 
 ```python
 report = lamas.compare("examples/clinician/clinician.yaml")
@@ -293,16 +311,17 @@ print(report.table())
 ```
 
 ```bash
-python examples/clinician/compare.py        # the same on a simulated LLM: no model needed
+python examples/clinician/compare.py --backend http://localhost:8000/v1 --model qwen3.5-9b
+python examples/clinician/compare.py        # no model yet: the same on a simulated LLM
 ```
 
 <p align="center">
   <img src="docs/assets/clinician-compare.gif" width="820" alt="python examples/clinician/compare.py: ten MedQA cases, each run without LAMaS and then with LAMaS. Without LAMaS every case takes 12.9 to 18.0 s and 4 LLM calls. With LAMaS the three clinicians run at the same time; on 4 of the 10 cases they agree and the attending is pruned. Mean latency 15.31 s without LAMaS and 6.91 s with it.">
-  <br><sub>A real run of step 4 on the simulated LLM, played 4× faster.</sub>
+  <br><sub>A real run of step 5 on the simulated LLM, played 4× faster.</sub>
 </p>
 
 Without LAMaS, the agents run one after another and all of them run. With LAMaS, the three
-clinicians run at the same time, and the attending is pruned when they agree. On a real model the
+clinicians run at the same time, and the attending is pruned when they agree. On your LLM, the
 table also compares accuracy.
 
 ## Citation

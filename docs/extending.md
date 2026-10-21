@@ -5,8 +5,8 @@ work the same for code, math, customer support or anything else. This guide take
 your data, your prompts, your tools and your workflow. Each step is a config key or one Python
 file, and none of it needs training.
 
-New to LAMaS? The [tutorial](tutorial.md) walks through one example from the dataset to a comparison
-with LAMaS and without, step by step.
+New to LAMaS? The [tutorial](tutorial.md) walks through one example, from the LLM and the dataset to a
+comparison with LAMaS and without, step by step.
 
 | You want | You write | Section |
 |---|---|---|

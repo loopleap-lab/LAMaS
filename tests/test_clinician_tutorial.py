@@ -91,3 +91,10 @@ def test_the_compare_script_gives_both_sides_the_same_replies():
         assert row["without"]["llm_calls"] == 4 and row["with"]["llm_calls"] in (3, 4)
         assert all(row["with"]["trace"].spans[k].outputs == row["without"]["trace"].spans[k].outputs
                    for k in ("Internist#0", "Pathologist#0", "Pharmacist#0"))
+
+
+def test_the_compare_script_puts_backend_and_model_on_top_of_the_config():
+    llm = runpy.run_path(os.path.join(FOLDER, "compare.py"))["llm"]
+    assert type(llm()).__name__ == "SimulatedLLM"
+    assert llm("https://api.openai.com/v1", "gpt-4o-mini") == {"base_url": "https://api.openai.com/v1", "model": "gpt-4o-mini"}
+    assert llm(model="qwen3.5-4b") == {"base_url": "http://localhost:8000/v1", "model": "qwen3.5-4b"}

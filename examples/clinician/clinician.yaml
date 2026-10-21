@@ -18,6 +18,6 @@ policy:
     layers: [[Internist, Pathologist, Pharmacist], [Attending]]
   stop: {type: agreement, min_solutions: 3}         # all three agree: skip the attending
 
-backend:                                  # the serving engine: any OpenAI-compatible endpoint
-  base_url: http://localhost:8000/v1
-  model:    qwen3.5-9b
+backend:                                  # the LLM: any OpenAI-compatible endpoint (step 1)
+  base_url: http://localhost:8000/v1      # vLLM on your GPU, or https://api.openai.com/v1
+  model:    qwen3.5-9b                    # or gpt-4o-mini, with the key in $LAMAS_API_KEY
