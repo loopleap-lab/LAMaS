@@ -2,11 +2,10 @@
   <img src="docs/assets/logo.svg" width="84" alt="LAMaS logo">
 </p>
 
-<h1 align="center">LAMaS</h1>
+<h1 align="center">LAMaS: A Modular Platform for Learning Low-Latency Multi-Agent Orchestration</h1>
 
 <p align="center">
-  <b>Latency-aware orchestration for multi-agent LLM systems.</b><br>
-  Change one <code>base_url</code>, and a multi-agent workflow answers in a fraction of the time, at the same accuracy.
+  Send a query to LAMaS, or keep your framework’s graph builder and use the latency-optimized orchestration layer.
 </p>
 
 <p align="center">
@@ -21,6 +20,7 @@
   <a href="#quickstart"><b>Quickstart</b></a> ·
   <a href="#demo"><b>Demo</b></a> ·
   <a href="#drop-in-endpoint"><b>Endpoint</b></a> ·
+  <a href="#use-your-own-graph-builder"><b>Framework integration</b></a> ·
   <a href="#how-it-works"><b>How it works</b></a> ·
   <a href="#extending-it"><b>Extending</b></a> ·
   <a href="#qa"><b>Q&amp;A</b></a> ·
@@ -28,10 +28,9 @@
   <a href="https://arxiv.org/abs/2601.10560"><b>Paper</b></a>
 </p>
 
-LAMaS is a runtime that sits between agent frameworks and serving engines. A multi-agent system
-answers a query in several agent steps, called **operators**. For each query a **controller** picks
-the operators to run, a **scheduler** runs them in parallel where they do not wait for each other,
-and a **stop gate** ends the run as soon as the answer is settled.
+In a multi-agent system (MAS), the time a user waits depends on the **critical path**, the longest chain of dependent agent calls. LAMaS learns which calls to run and when to stop. During training, operators on the critical path receive the largest latency penalty under a target floor on expected accuracy. During inference, a lightweight controller uses partial results to decide whether to skip calls that have yet to start.
+
+An application can send a query to the OpenAI-compatible endpoint and receive an answer with a trace of operator timings, critical path, and cost. A framework can also keep its own graph builder and reuse the orchestration layer. The paper evaluates this integration with GDesigner and AgentDropout across GSM8K, HumanEval, MATH, and MMLU-Pro.
 
 <p align="center">
   <picture>
@@ -40,17 +39,16 @@ and a **stop gate** ends the run as soon as the answer is settled.
   </picture>
 </p>
 
-This is the open-source package of the paper
-[*Learning Latency-Aware Orchestration for Multi-Agent Systems*](https://arxiv.org/abs/2601.10560) (NeurIPS 2026).
+Across four benchmarks, LAMaS reduced end-to-end latency by over 50% relative to the evaluated learning-based MAS baselines, with competitive or better accuracy. [NeurIPS 2026 paper](https://arxiv.org/abs/2601.10560)
 
 ## Highlights
 
-- **Faster at the same accuracy.** 56% to 76% lower latency than MaAS on four benchmarks, at equal or higher accuracy (paper, Table 1).
+- **Comparison with MaAS.** LAMaS had 56% to 76% lower latency than MaAS across four benchmarks, at equal or higher accuracy (Table 1).
 - **Drop-in.** `lamas serve` is an OpenAI-compatible endpoint. The application changes one `base_url` and keeps its code.
 - **Any serving engine.** vLLM, SGLang, Ollama, OpenAI, OpenRouter: anything that speaks the OpenAI API.
 - **A trained policy in the box.** [`lamas/humaneval`](policies/humaneval), the controller and the stop gate behind the paper's HumanEval results, loads by default.
 - **Every answer is explained.** Each run returns a trace: which operators ran, how long each took, which ones set the latency (the critical path), what the stop gate pruned, and what it cost.
-- **Built to extend.** Your data, prompts and workflow fit in one config, and a tool is one function. Nothing needs training ([tutorial](docs/tutorial.md), [guide](docs/extending.md)).
+- **Custom workflows.** You can run a hand-written workflow with your own data, prompts, and tools before training a policy. [Tutorial](docs/tutorial.md) · [Extension guide](docs/extending.md)
 
 ## Quickstart
 
@@ -97,12 +95,43 @@ lamas serve configs/humaneval-gpt4omini.yaml --port 8080
 from openai import OpenAI
 
 client = OpenAI(base_url="http://localhost:8080/v1", api_key="not-needed")
+problem = "def add(a, b):\n    \"\"\"Return the sum of a and b.\"\"\""
 reply = client.chat.completions.create(model="lamas/auto", messages=[{"role": "user", "content": problem}])
+print(reply.choices[0].message.content)
+trace = reply.model_extra["lamas"]
+print(trace["critical_path"], trace["cost"])
 ```
 
-The application keeps its code; only the base URL changes. The response is an ordinary chat completion.
-The trace rides along in a `lamas` field and in `x-lamas-*` headers (latency, LLM calls, critical path,
-pruned operators). A latency budget for one request goes in `extra_body={"lamas": {"budget": {"latency_s": 10}}}`.
+Point your framework’s chat client at the URL above and select `lamas/auto` to run the policy loaded by the server. The answer is in the standard chat completion and the `lamas` field contains the execution trace. The `x-lamas-*` headers summarize latency, LLM calls, critical path, and pruned operators. To request a per-query latency budget, pass `extra_body={"lamas": {"budget": {"latency_s": 10}}}`.
+
+## Use your own graph builder
+
+If your framework already selects agents for each query, map those agents to registered LAMaS operators and pass their names to the runtime in layers. In this example, two agents can generate candidates in parallel. The ensemble depends on their outputs. The agreement rule can skip the ensemble if both candidates agree.
+
+```python
+import lamas
+
+layers = [["Generate", "GenerateCoT"], ["ScEnsemble"]]  # Output from your graph builder
+result = lamas.run(
+    "What is 6 * 7?",
+    policy={
+        "controller": {"type": "fixed", "layers": layers},
+        "stop": {"type": "agreement", "min_solutions": 2},
+    },
+    backend="mock",
+)
+print(result.answer)
+print(result.trace.gantt())
+```
+
+Use `backend="mock"` to try this offline, or supply your serving engine. To let LAMaS call your builder for every query, implement `Controller.select` and return `Selection(layers=...)`. The scheduler derives dependencies from the inputs each operator declares. [Controller interface](src/lamas/controllers/base.py) · [Custom operators](docs/extending.md)
+
+**Training the layer for another framework.** The paper integrated LAMaS into GDesigner and AgentDropout in two steps.
+
+1. Train the framework’s graph policy with its existing builder. Score each run against the task, assign the greatest latency penalty to operators on the critical path, and update the policy under the target accuracy floor. A custom training loop can obtain per-operator rewards from `Objective.node_rewards(trace, score)`. [Training objective](src/lamas/objective.py)
+2. Freeze the graph policy and collect full execution traces. At each operator completion, compare the reward for stopping there with the reward for finishing the graph. Fit the stop controller to that difference. At inference time it uses partial results to decide whether to launch the remaining operators. [Trace collection and gate fitting](src/lamas/training.py)
+
+On HumanEval, this reduced GDesigner’s mean latency from **49.68 s to 30.85 s** and AgentDropout’s from **51.49 s to 36.62 s** per query (Table 3). These results use a controller trained on each framework’s traces. The runnable example above uses the built-in agreement rule.
 
 ## One config
 
@@ -118,15 +147,9 @@ Only the backend is required.
 
 ## How it works
 
-A multi-agent system gets more answers right than a single LLM call, and it pays for that in
-latency. Cost adds up over all operators, but latency follows the critical path: the longest
-chain of operators that wait on each other. So a method that cuts cost does not reliably cut latency.
-
-LAMaS shortens the critical path directly:
-
-1. **An accuracy floor.** Training minimizes latency and cost, but accuracy must stay at the reference level.
-2. **Critical-path credit.** During training an operator is penalized only as much as it delays the answer.
-3. **A stop gate.** At run time a small model checks after each operator whether the rest is still worth waiting for.
+1. **Train the graph policy.** Given a query, the policy selects agent steps called operators. Training weighs wall-clock latency and cost against a target floor on expected task accuracy.
+2. **Assign credit to operators.** Operators on the longest dependency chain receive the full latency penalty. Operators on shorter paths receive a smaller share.
+3. **Use partial results at run time.** The scheduler starts operators as their inputs become available. After each completion, the learned stop controller decides whether to skip pending work. The trace records which calls ran, which calls set the critical path, and which were skipped.
 
 ## The runtime: six primitives
 
@@ -193,7 +216,7 @@ plugins, workflows without training, task classes and packaging. The example abo
 | L0 Endpoint | `lamas serve`, change `base_url` | OpenAI SDK, LangChain, curl, any OpenAI client | today |
 | L1 Provider | `lamas.adapters.litellm_provider.register(runner)` | LiteLLM and what is built on it (DSPy) | today |
 | L2 Native | a node or module that exposes the workflow and the trace | LangGraph, DSPy, MCP | later |
-| L3 Train | `lamas train` on your task, operators and serving engine | any task with data and a scorer | next |
+| L3 Train | `lamas train` fits the bundled graph policy and stop controller | tasks with a training split and scorer | available for the LAMaS policy |
 
 Downstream, LAMaS talks to any OpenAI-compatible serving engine: vLLM, SGLang, Ollama, OpenAI, OpenRouter.
 
@@ -328,7 +351,7 @@ table also compares accuracy.
 
 ```bibtex
 @inproceedings{shi2026lamas,
-  title     = {Learning Latency-Aware Orchestration for Multi-Agent Systems},
+  title     = {{LAMaS}: A Modular Platform for Learning Low-Latency Multi-Agent Orchestration},
   author    = {Shi, Xi and Zheng, Mengxin and Lou, Qian},
   booktitle = {Advances in Neural Information Processing Systems},
   year      = {2026}
