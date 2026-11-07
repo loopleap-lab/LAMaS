@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://arxiv.org/abs/2601.10560"><img src="https://img.shields.io/badge/arXiv-2601.10560-b31b1b" alt="arXiv 2601.10560"></a>
-  <a href="https://arxiv.org/abs/2601.10560"><img src="https://img.shields.io/badge/NeurIPS-2026-6d28d9" alt="NeurIPS 2026"></a>
+  <a href="docs/LAMaS.pdf"><img src="https://img.shields.io/badge/NeurIPS-2026-6d28d9" alt="NeurIPS 2026"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%2B-3776ab" alt="Python 3.10+"></a>
   <a href="#drop-in-endpoint"><img src="https://img.shields.io/badge/API-OpenAI--compatible-0d9488" alt="OpenAI-compatible API"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache-2.0"></a>
@@ -25,7 +25,7 @@
   <a href="#extending-it"><b>Extending</b></a> ·
   <a href="#qa"><b>Q&amp;A</b></a> ·
   <a href="policies/humaneval"><b>Policy</b></a> ·
-  <a href="https://arxiv.org/abs/2601.10560"><b>Paper</b></a>
+  <a href="docs/LAMaS.pdf"><b>Paper (PDF)</b></a>
 </p>
 
 In a multi-agent system (MAS), the time a user waits depends on the **critical path**, the longest chain of dependent agent calls. LAMaS learns which calls to run and when to stop. During training, operators on the critical path receive the largest latency penalty under a target floor on expected accuracy. During inference, a lightweight controller uses partial results to decide whether to skip calls that have yet to start.
@@ -39,7 +39,7 @@ An application can send a query to the OpenAI-compatible endpoint and receive an
   </picture>
 </p>
 
-Across four benchmarks, LAMaS reduced end-to-end latency by over 50% relative to the evaluated learning-based MAS baselines, with competitive or better accuracy. [NeurIPS 2026 paper](https://arxiv.org/abs/2601.10560)
+Across four benchmarks, LAMaS reduced end-to-end latency by over 50% relative to the evaluated learning-based MAS baselines, with competitive or better accuracy. [NeurIPS 2026 paper (PDF)](docs/LAMaS.pdf)
 
 ## Highlights
 
